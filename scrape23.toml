@@ -10,13 +10,13 @@ archivepath = "./archives"
 feeddir = "/var/www/html/feeds"
 
 # This is the base URL where the feeds are served from.
-feedurl = "https://k5.mohling.fi/feeds/"
+feedurl = "https://yourserver/feeds/"
 
 [feeds]
 
 # Configure the feeds you want to generate here. The key is the a name of the feed that must be a valid name for
 # files and directories as it is used to generate paths. The value is a table with the feedname and url keys.
-# The feedname is the name of the feed as it appears in the RSS feed, and the url is the URL 
+# The feedname is the friendly name of the feed as it appears in the RSS feed, and the url is the URL 
 # to the YouTube channel or search query.
 
 
@@ -25,7 +25,13 @@ feedname = "Ivan Puopolo - Viisasteluklubi"
 url = "https://www.youtube.com/@ivan_puopolo/videos"
 match_title = "Viisastelu"
 
-[feeds."Kakskolme"]
-feedname = "23 Minuuttia"
-url = "https://www.youtube.com/@Kakskolme/videos"
-match_title = "23 Minuuttia"
+[feeds."Kuuntelija"]
+feedname = "Kuuntelija"
+url = "https://www.youtube.com/@Kuuntelijapodcast/videos"
+#match_title = ""
+
+[feeds."BetterOffline"]
+feedname = "Better Offline"
+url = "https://www.youtube.com/@BetterOfflinePod/videos"
+
+

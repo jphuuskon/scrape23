@@ -1,18 +1,21 @@
 [tool.poetry]
 name = "scrape23"
 version = "0.1.0"
-description = "A simple utility to convert any youtube channel into an audio podcast with yt_dlp and genRSS."
-authors = ["Your Name <you@example.com>"]
+description = "A simple utility to convert any Youtube channel into an audio podcast served from your webserver."
+authors = ["jphuuskon"]
 readme = "README.md"
+packages = [{include = "*", from="src"}]
+license = "GPL-3.0"
 
 
 [tool.poetry.dependencies]
 python = "^3.11"
-yt-dlp = "^2024.12.6"
-generss = "^0.3.1"
+yt-dlp = "*"
+generss = "*"
+lxml = "*"
 
 [tool.poetry.scripts]
-scrape23 = "scrape23.scrape23:main"
+scrape23 = "src.scrape23:main"
 
 [build-system]
 requires = ["poetry-core"]

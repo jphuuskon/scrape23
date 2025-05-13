@@ -1,0 +1,4 @@
+#!/bin/sh -l
+DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$DIR"
+python scrape23.py $@
