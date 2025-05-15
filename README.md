@@ -36,7 +36,7 @@ Scrape23 is a utility to convert any YouTube channel into a podcast feed served 
     scrape23 --initialize-archives --config yourconfigfile.toml
     ```
 
-7. Add scrape23 to your crontab:
+7. Add scrape23 to your crontab. This example runs scrape23 five minutes past the hour every three hours:
     ```
     5 */3 * * *  scrape23 --config yourconfigfile.toml
     ```

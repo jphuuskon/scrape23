@@ -233,37 +233,33 @@ def postprocess_rss(feedname):
     rsspath = Path(f"{feed_directory}/{outputfile}")
     logger.debug(f"RSS path: {rsspath}")
     
-    
     tree = etree.parse(rsspath)
     root = tree.getroot()
     channel = root.find('channel')
     items = channel.findall('item')
     for item in items:
-        # get the filename
-        
+
+        # get the filename from the enclosure tag
         enclosure = item.find('enclosure')
         url = enclosure.get('url')
         parsed_url = urlparse(url)
         filename = os.path.basename(parsed_url.path)
         file = filesdirectory + '/' + filename
         
-        # get the pubdate from inside the mp3
-        
+        # get the pubdate from MP3 metadata
         mtg = MP3(file)
-        
         date_str = str(mtg.tags['TDRC'])
         title_str = str(mtg.tags['TIT2'])    
-        logger.debug(f"Episode name: {title_str}, date string: {date_str}")
+        logger.debug(f"File: {filename}, date string: {date_str}")
         dt = datetime.strptime(date_str, "%Y%m%d").replace(tzinfo=timezone.utc)
-        rfc2822_date = email.utils.format_datetime(dt)
-        
+                
         # get the pubdate tag
         pubdate = item.find('pubDate')
         
         #rewrite pubdate tag
-        pubdate.text = rfc2822_date
+        pubdate.text = email.utils.format_datetime(dt)
 
-    #write out modified RSS feed
+    #write out modified RSS file
     logger.debug(f"Writing RSS feed to {rsspath}.")
     tree.write(rsspath, encoding='utf-8', xml_declaration=True) 
 
@@ -283,7 +279,7 @@ def generate_rss(feedname):
     thumbnail = f'thumbnails/{feedname}.jpg'
     logger.debug(f"Thumbnail path: {thumbnail}")
     
-    
+    # arguments for genRSS    
     argv = ['-t', feedtitle,
             '-d', filesdirectory,
             '-o', outputfile,
@@ -293,16 +289,18 @@ def generate_rss(feedname):
             '-e', 'mp3',
             '-i', thumbnail]
 
+    # push working directory. GenRSS operates on the working directory so we need to change directories.
     cwd = os.getcwd()
     os.chdir(feed_directory)
 
     logger.debug(f"Executing genRSS in {feed_directory}.")
     
+    # run genRSS
     generss.main(argv)
 
+    # pop back to the original working directory
     os.chdir(cwd)
     
-    postprocess_rss(feedname)
 
     return True
 
@@ -332,7 +330,6 @@ def strip_toc(f):
             mtgfile.pop('CTOC:toc')
         mtgfile.save()
 
-
 # main function. Parse arguments and configuration and run all phases for each feed
 def main(argv=None):
     
@@ -360,7 +357,6 @@ def main(argv=None):
     parser.add_argument('--ignore-ratelimit', action='store_true', default=False,
                         help='Ignore the rate limit specified in the config file.', dest='ignore_ratelimit')
     
-    
     args = parser.parse_args(argv)
     
     if args.log_path:
@@ -373,11 +369,14 @@ def main(argv=None):
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug logging.")
     
+    # get configuration
+    config.load_config(args.config)
+    feeds = config.feeds
     
-    
+    #set the rate limit
     ratelimit = None 
-    # If ratelmit is specified...
-    if args.ratelimit:
+    # If ratelimit is specified...
+    if args.ratelimit is not None:
         try:
             logger.info(f"Rate limit: {args.ratelimit}")
             ratelimit = parse_size(args.ratelimit)
@@ -388,7 +387,7 @@ def main(argv=None):
         # If not, get value from config
         ratelimit = config.ratelimit
         if ratelimit:
-            logger.info(f"Rate limit: {args.ratelimit}")
+            logger.debug(f"Rate limit: {args.ratelimit}")
             
     # if told to ignore ratelimit, Leeroy Jenkins it
     if args.ignore_ratelimit:
@@ -396,14 +395,11 @@ def main(argv=None):
         logger.info("Force ignore ratelimit.")
     
     
-    config.load_config(args.config)
-    feeds = config.feeds
-    
     if args.initialize:
         if not initialize_environment():
             return False
 
-        
+    # initialize archives.    
     if args.initialize_archives:
         for feed in feeds:
             if not initialize_archive(feed):
@@ -418,31 +414,34 @@ def main(argv=None):
             logger.error(f"Error: feed {args.feed} not configured.")
             return False
         feed = args.feed
-        if not initialize_archive(feed, refresh_thumbnails):
-            return False
-        get_episodes(feed)
-        generate_rss(feed)
+        process_feed(feed, args.no_download)
         return True
     
     ## Default behaviour is to process all feeds
     ## Starting here:
     
     logger.info("Processing all feeds.")
-    
     for feed in feeds:
-        logger.info(f"Processing feed {feed}.")
-        if not initialize_archive(feed, refresh_thumbnails):
-            return False
-        if not args.no_download:
-            get_episodes(feed)
-        else:
-            logger.info(f"Skipping episode downloads for {feed}.")
-            
-        filter(feed)
-        
-        generate_rss(feed)
+        process_feed(feed, args.no_download)
         
     return True
+
+# Process a single feed
+def process_feed(feed, no_download=False):
+    logger.info(f"Processing feed {feed}.")
+    if not initialize_archive(feed, refresh_thumbnails):
+        return False
+    if not no_download:
+        get_episodes(feed)
+    else:
+        logger.info(f"Skipping episode downloads for {feed}.")
+    
+    # filter MP3's            
+    filter(feed)
+    #generate RSS
+    generate_rss(feed)
+    # postprocess RSS file
+    postprocess_rss(feed)
 
 
 # Entrypoint

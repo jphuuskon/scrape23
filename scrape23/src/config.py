@@ -23,7 +23,7 @@ def load_config(configfile):
     global feed_url
     global feeds
     global ratelimit
-    logger.info(f"Loading scrape23 configuration from {configfile}...")
+    logger.info(f"Loading configuration from {configfile}...")
     
     data = []
     try:
@@ -40,8 +40,8 @@ def load_config(configfile):
     
     feeds = data['feeds']
     
-    logger.info(f"Archive path: {archive_path}, Feed directory: {feed_directory}, Feed base URL: {feed_url}")
+    logger.debug(f"Archive path: {archive_path}, Feed directory: {feed_directory}, Feed base URL: {feed_url}")
     for f in feeds:
-        logger.info(f"Feed: {f}")
+        logger.debug(f"Feed: {f}")
     
     

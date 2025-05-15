@@ -28,12 +28,12 @@ feedurl = "https://yourserver/feeds/"
 [feeds."Viisasteluklubi"]
 feedname = "Ivan Puopolo - Viisasteluklubi"
 url = "https://www.youtube.com/@ivan_puopolo/videos"
+# You can use a match string that is passed to yt-dlp for filtering episodes. See yt-dlp documentation for help.
 match_title = "Viisastelu"
 
 [feeds."Kuuntelija"]
 feedname = "Kuuntelija"
 url = "https://www.youtube.com/@Kuuntelijapodcast/videos"
-#match_title = ""
 
 [feeds."BetterOffline"]
 feedname = "Better Offline"
