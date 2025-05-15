@@ -119,22 +119,14 @@ def get_thumbnail(url, thumbnail_path):
     
 daterange = yt_dlp.utils.DateRange("today-2months", "today")
     
-# initialize a feed
-def initialize_archive(feed_name, refresh_thumbnails = False):
+# initialize a feed and download the episode list for the archive.
+def check_archive(feed_name, refresh_thumbnails = False):
     feeds = config.feeds
-    logger.info(f"Initializing archive for {feed_name}.")
+    logger.info(f"Checking archive for {feed_name}.")
     url =f"{config.feeds[feed_name]['url']}"
-    logger.debug(f"Feed URL: {url}")
-    
+
     archive = Path(f"{config.archive_path}/{feed_name}.archive")
-    logger.debug(f"Archive path: {archive}")
     
-    if not Path.exists(archive):
-        try:
-            Path.touch(archive)
-        except:
-            logger.error("Could not write to archive path.")
-            return False
     
     thumbnailpath = Path(f"{config.feed_directory}/thumbnails/{feed_name}.jpg")
     logger.debug(f"Thumbnail path: {thumbnailpath}")
@@ -146,7 +138,6 @@ def initialize_archive(feed_name, refresh_thumbnails = False):
     elif not Path.is_dir(episodespath):
         logger.error("Error: episodes path is not a directory.")
         return False
-    
     
     # get feed thumbnail
     if not Path.exists(thumbnailpath) or refresh_thumbnails:
@@ -163,6 +154,7 @@ def initialize_archive(feed_name, refresh_thumbnails = False):
     # use yt_dlp to get a list of past episodes that we don't want to download
     if not Path.exists(archive):
         with yt_dlp.YoutubeDL(ytdl_opts) as ytdl:
+            logger.info(f"Populating archive for {feed_name}.")
             error_code = ytdl.download(url)
     
     return True
@@ -325,7 +317,7 @@ def strip_toc(f):
 # Process a single feed
 def process_feed(feed, no_download=False):
     logger.info(f"Processing feed {feed}.")
-    if not initialize_archive(feed, refresh_thumbnails):
+    if not check_archive(feed, refresh_thumbnails):
         return False
     if not no_download:
         get_episodes(feed)
@@ -352,7 +344,7 @@ def main(argv=None):
                       help='Refresh thumbnails', dest='refresh_thumbnails')
     parser.add_argument('--feed', action='store',
                       help='Feed to scrape', dest='feed')
-    parser.add_argument('--config', action='store', default='./scrape23.toml', dest='config',
+    parser.add_argument('--config', action='store', default='~/scrape23.toml', dest='config',
                         help='Configuration file to use')
     parser.add_argument('--no-download', action='store_true', default=False,
                         help='Do not download any episodes, only process files and generate RSS', dest='no_download')
@@ -414,7 +406,7 @@ def main(argv=None):
     # initialize archives.    
     if args.initialize_archives:
         for feed in feeds:
-            if not initialize_archive(feed):
+            if not check_archive(feed):
                 return False
             return True
 
