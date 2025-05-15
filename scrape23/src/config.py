@@ -40,9 +40,8 @@ def load_config(configfile):
     
     feeds = data['feeds']
     
-   
-    logger.info(f"Common configuration: Archive path: {archive_path}, Feed directory: {feed_directory}, Feed base URL: {feed_url}")
+    logger.info(f"Archive path: {archive_path}, Feed directory: {feed_directory}, Feed base URL: {feed_url}")
     for f in feeds:
-        logger.info(f"Configured feed: {f}")
+        logger.info(f"Feed: {f}")
     
     
