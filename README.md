@@ -29,5 +29,17 @@ Scrape23 is a utility to convert any YouTube channel into a podcast feed served 
     ```bash
     sudo apt install ffmpeg
     ```
+5. check `scrape23.toml.sample` file for configuration example
 
+6. Initalize the feed archives with:
+    ```bash
+    scrape23 --initialize-archives --config yourconfigfile.toml
+    ```
+
+7. Add scrape23 to your crontab:
+    ```
+    5 */3 * * *  scrape23 --config yourconfigfile.toml
+    ```
+
+8. Subscribe to your feeds on your podcast client.
 
