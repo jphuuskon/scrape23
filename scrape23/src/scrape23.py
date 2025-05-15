@@ -280,14 +280,7 @@ def generate_rss(feedname):
     logger.debug(f"Thumbnail path: {thumbnail}")
     
     # arguments for genRSS    
-    argv = ['-t', feedtitle,
-            '-d', filesdirectory,
-            '-o', outputfile,
-            '-H', feed_url,
-            '-M',
-            '-C',
-            '-e', 'mp3',
-            '-i', thumbnail]
+    argv = ['-t', feedtitle, '-d', filesdirectory, '-o', outputfile, '-H', feed_url, '-M', '-C', '-e', 'mp3', '-i', thumbnail]
 
     # push working directory. GenRSS operates on the working directory so we need to change directories.
     cwd = os.getcwd()
@@ -301,11 +294,10 @@ def generate_rss(feedname):
     # pop back to the original working directory
     os.chdir(cwd)
     
-
     return True
 
 # clean up metadata from the media files for a given feed. This is mostly done for the CTOC:toc stripping
-def filter(feed):
+def preprocess_metadata(feed):
     logger.info(f"Metadata cleanup for feed {feed}.")
     feeds = config.feeds
     if not feed in feeds:
@@ -321,7 +313,7 @@ def filter(feed):
     
     return True
 
-# sTOC:toc ID3 tags break eye3d library used by genRSS, so let's strip those out.
+# DTOC:toc ID3 tags break eye3d library used by genRSS, so let's strip those out.
 def strip_toc(f):
     if f.is_file():
         mtgfile = ID3(f) 
@@ -329,6 +321,24 @@ def strip_toc(f):
             logger.info(f"Stripping CTOC:toc from {f}")
             mtgfile.pop('CTOC:toc')
         mtgfile.save()
+
+# Process a single feed
+def process_feed(feed, no_download=False):
+    logger.info(f"Processing feed {feed}.")
+    if not initialize_archive(feed, refresh_thumbnails):
+        return False
+    if not no_download:
+        get_episodes(feed)
+    else:
+        logger.info(f"Skipping episode downloads for {feed}.")
+    
+    # filter MP3's            
+    preprocess_metadata(feed)
+    #generate RSS
+    generate_rss(feed)
+    # postprocess RSS file
+    postprocess_rss(feed)
+
 
 # main function. Parse arguments and configuration and run all phases for each feed
 def main(argv=None):
@@ -350,8 +360,9 @@ def main(argv=None):
                         help='Specify log file', dest='log_path')
     parser.add_argument('--debug', action='store_true', default=False,
                         help='Enable debug logging', dest='debug')
-    parser.add_argument('--ignore-datelimit', action='store_true', default=False,
-                        help='Ignore the two month hard limit on how old episodes to download. Careless usage of this argument may result getting blocked by YouTube.', dest='ignore_datelimit')
+    #TODO: ADD IMPLEMENTATION FOR THIS
+    #parser.add_argument('--ignore-datelimit', action='store_true', default=False,
+    #                    help='Ignore the two month hard limit on episode age.', dest='ignore_datelimit')
     parser.add_argument('--ratelimit', action='store', default=None,
                         help='Rate limit for YouTube downloads. This can be also used to overide the rate limit specified in the config file. Use kB, MB, etc. for bytes per second, kb, Mb, etc. for bits.', dest='ratelimit')
     parser.add_argument('--ignore-ratelimit', action='store_true', default=False,
@@ -359,6 +370,7 @@ def main(argv=None):
     
     args = parser.parse_args(argv)
     
+    #logging is critical for other things, so let's set it up first
     if args.log_path:
         fh = logging.FileHandler(args.log_path)
         ff = logging.Formatter('%(asctime)s - %(funcName)s - %(levelname)s - %(message)s')
@@ -408,6 +420,9 @@ def main(argv=None):
 
     refresh_thumbnails = args.refresh_thumbnails
     
+    # at this point configuration is done, it's time to do the actual work.
+    
+    # check if we want to manually process a particular feed
     if args.feed:
         logger.info(f"Processing feed {args.feed}")
         if not args.feed in feeds:
@@ -417,33 +432,14 @@ def main(argv=None):
         process_feed(feed, args.no_download)
         return True
     
-    ## Default behaviour is to process all feeds
-    ## Starting here:
-    
+    ## Default behaviour is to process all feeds from the config file.   
     logger.info("Processing all feeds.")
     for feed in feeds:
         process_feed(feed, args.no_download)
-        
     return True
 
-# Process a single feed
-def process_feed(feed, no_download=False):
-    logger.info(f"Processing feed {feed}.")
-    if not initialize_archive(feed, refresh_thumbnails):
-        return False
-    if not no_download:
-        get_episodes(feed)
-    else:
-        logger.info(f"Skipping episode downloads for {feed}.")
-    
-    # filter MP3's            
-    filter(feed)
-    #generate RSS
-    generate_rss(feed)
-    # postprocess RSS file
-    postprocess_rss(feed)
 
 
-# Entrypoint
+# Default entrypoint
 if __name__ == "__main__":
     main(sys.argv)
