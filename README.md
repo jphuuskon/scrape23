@@ -7,6 +7,12 @@ Scrape23 is a utility to convert any YouTube channel into a podcast feed served 
 - Uses yt-dlp to download videos and extract audio tracks into MP3 and mutagen to cleanup the MP3 metadata to prevent genRSS from crashing and lxml to fix the publication dates. One of these days I'll contribute an update to genRSS so that these both would become redundant.
 - generates the RSS feed file with genRSS.
 
+## What it won't do
+- scrape23 does not include a web server. You still need to set up a web server such as `Nginx` and configure it yourself.
+- scrape23 does not confiugure your web server. You need to configure your webserver to serve the directory where scrape23 puts the feeds and data
+- scrape23 does not configure security or access control for the feeds. That is your responsibility.
+
+
 ## Installation
 
 1. Clone the repository:
