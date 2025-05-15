@@ -122,7 +122,7 @@ daterange = yt_dlp.utils.DateRange("today-2months", "today")
 # initialize a feed
 def initialize_archive(feed_name, refresh_thumbnails = False):
     feeds = config.feeds
-    logger.info(f"Initializing archive for {feed_name} - Friendly name: {feeds[feed_name]['feedname']}")
+    logger.info(f"Initializing archive for {feed_name}.")
     url =f"{config.feeds[feed_name]['url']}"
     logger.debug(f"Feed URL: {url}")
     
@@ -306,7 +306,7 @@ def generate_rss(feedname):
 
     return True
 
-# clean up the metadata from the media files for a given feed. This is mostly done for the CTOC:toc stripping
+# clean up metadata from the media files for a given feed. This is mostly done for the CTOC:toc stripping
 def filter(feed):
     logger.info(f"Metadata cleanup for feed {feed}.")
     feeds = config.feeds
@@ -318,7 +318,7 @@ def filter(feed):
     filedir = Path(config.feed_directory + '/media/' + feed)
     for f in filedir.iterdir():    
         if f.is_file() and f.suffix == '.mp3':
-            logger.debug(f"Stripping file {f}.")
+            logger.debug(f"Checking file {f}.")
             strip_toc(f)
     
     return True

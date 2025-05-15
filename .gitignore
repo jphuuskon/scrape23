@@ -1,3 +1,4 @@
-scrape23/scrape23/__pycache__/
+scrape23/scrape23/__pycache__
 scrape23/archives/
 dist/
+poetry.lock

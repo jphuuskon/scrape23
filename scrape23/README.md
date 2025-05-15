@@ -25,7 +25,7 @@ Scrape23 is a utility to convert any YouTube channel into a podcast feed served 
     poetry install
     ```
 
-4. Ensure you have `ffmpeg` installed:
+4. yt-dlp uses ffmpeg so you migh want to ensure you have `ffmpeg` installed:
     ```bash
     sudo apt install ffmpeg
     ```
