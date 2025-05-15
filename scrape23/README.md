@@ -30,13 +30,4 @@ Scrape23 is a utility to convert any YouTube channel into a podcast feed served 
     sudo apt install ffmpeg
     ```
 
-5. Make the `scrape23` shell script executable:
-    ```bash
-    chmod +x scrape23
-    ```
-
-6. Verify the installation by running:
-    ```bash
-    ./scrape23 --help
-    ```
 

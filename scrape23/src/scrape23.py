@@ -1,7 +1,8 @@
+import config
+#from config import archive_path, feed_directory, feed_url
 import yt_dlp
 import generss
 from pathlib import Path
-import config
 import os
 import sys
 import argparse
@@ -12,6 +13,7 @@ from lxml import etree
 from urllib.parse import urlparse
 from datetime import datetime, timezone
 import email.utils
+from humanfriendly import parse_size
 
 # Logging setup and defaults
 logging.basicConfig(format='%(asctime)s - %(funcName)s - %(levelname)s - %(message)s',level=logging.INFO)
@@ -24,10 +26,10 @@ logger.setLevel(logging.INFO)
 # setup everything so scrape23 will actually work. This will obvs not configure your web server
 def initialize_environment():
 
-    logger.info("Checking/initializing environment for scrape23: archive path is " + archive_path + ", feed directory is " + feed_directory)
+    logger.info("Checking/initializing environment for scrape23: archive path is " + config.archive_path + ", feed directory is " + config.feed_directory)
 
-    archive = Path(archive_path)
-    feeds = Path(feed_directory)
+    archive = Path(config.archive_path)
+    feeds = Path(config.feed_directory)
 
     
     #Make sure there's a directory for the archive files and create it if it doesn't exist
@@ -38,7 +40,7 @@ def initialize_environment():
         return False
     
     # check that archive path is writeable
-    checkfile = Path(archive_path + '/scrape23_check')
+    checkfile = Path(config.archive_path + '/scrape23_check')
     try:
         Path.touch(checkfile)
     except:
@@ -54,7 +56,7 @@ def initialize_environment():
         return False
     
     # check that feed directory is writeable
-    checkfile = Path(feed_directory + '/scrape23_check')
+    checkfile = Path(config.feed_directory + '/scrape23_check')
     try:
         Path.touch(checkfile)
     except:
@@ -63,7 +65,7 @@ def initialize_environment():
     Path.unlink(checkfile)
     
     #check media directory exists
-    media = Path(feed_directory + '/media')
+    media = Path(config.feed_directory + '/media')
     if not Path.exists(media):
         Path.mkdir(media)
     elif not Path.is_dir(media):
@@ -71,7 +73,7 @@ def initialize_environment():
         return False
     
     # check that media directory is writeable
-    checkfile = Path(feed_directory + '/media/scrape23_check')
+    checkfile = Path(config.feed_directory + '/media/scrape23_check')
     try:
         Path.touch(checkfile)
     except:
@@ -80,7 +82,7 @@ def initialize_environment():
     Path.unlink(checkfile)
     
     #check that the thumbnails directory exists
-    thumbnails = Path(feed_directory + '/thumbnails')
+    thumbnails = Path(config.feed_directory + '/thumbnails')
     if not Path.exists(thumbnails):
         Path.mkdir(thumbnails)
     elif not Path.is_dir(thumbnails):
@@ -88,7 +90,7 @@ def initialize_environment():
         return False
     
     #check that the thumbnails directory is writeable
-    checkfile = Path(feed_directory + '/thumbnails/scrape23_check')
+    checkfile = Path(config.feed_directory + '/thumbnails/scrape23_check')
     try:
         Path.touch(checkfile)
     except:
@@ -127,6 +129,13 @@ def initialize_archive(feed_name, refresh_thumbnails = False):
     archive = Path(f"{config.archive_path}/{feed_name}.archive")
     logger.debug(f"Archive path: {archive}")
     
+    if not Path.exists(archive):
+        try:
+            Path.touch(archive)
+        except:
+            logger.error("Could not write to archive path.")
+            return False
+    
     thumbnailpath = Path(f"{config.feed_directory}/thumbnails/{feed_name}.jpg")
     logger.debug(f"Thumbnail path: {thumbnailpath}")
     
@@ -158,7 +167,7 @@ def initialize_archive(feed_name, refresh_thumbnails = False):
     
     return True
 
-def get_episodes(feed_name):
+def get_episodes(feed_name, ratelimit=None):
     feeds = config.feeds
     feed_directory = config.feed_directory
     feed_url = config.feed_url
@@ -181,6 +190,7 @@ def get_episodes(feed_name):
     
     # set up ytdl options
     ytdl_opts = {
+        'ratelimit' : ratelimit,
         'daterange': daterange,
         'download_archive': archive,
         'outtmpl': f"{episodespath}/%(timestamp)s-%(id)s.%(ext)s",
@@ -343,6 +353,13 @@ def main(argv=None):
                         help='Specify log file', dest='log_path')
     parser.add_argument('--debug', action='store_true', default=False,
                         help='Enable debug logging', dest='debug')
+    parser.add_argument('--ignore-datelimit', action='store_true', default=False,
+                        help='Ignore the two month hard limit on how old episodes to download. Careless usage of this argument may result getting blocked by YouTube.', dest='ignore_datelimit')
+    parser.add_argument('--ratelimit', action='store', default=None,
+                        help='Rate limit for YouTube downloads. This can be also used to overide the rate limit specified in the config file. Use kB, MB, etc. for bytes per second, kb, Mb, etc. for bits.', dest='ratelimit')
+    parser.add_argument('--ignore-ratelimit', action='store_true', default=False,
+                        help='Ignore the rate limit specified in the config file.', dest='ignore_ratelimit')
+    
     
     args = parser.parse_args(argv)
     
@@ -354,6 +371,30 @@ def main(argv=None):
     
     if args.debug:
         logger.setLevel(logging.DEBUG)
+        logger.debug("Debug logging.")
+    
+    
+    
+    ratelimit = None 
+    # If ratelmit is specified...
+    if args.ratelimit:
+        try:
+            logger.info(f"Rate limit: {args.ratelimit}")
+            ratelimit = parse_size(args.ratelimit)
+        except:
+            logger.error(f"Error: {args.ratelimit} is not a valid rate limit.")
+            return False
+    else:
+        # If not, get value from config
+        ratelimit = config.ratelimit
+        if ratelimit:
+            logger.info(f"Rate limit: {args.ratelimit}")
+            
+    # if told to ignore ratelimit, Leeroy Jenkins it
+    if args.ignore_ratelimit:
+        ratelimit = None
+        logger.info("Force ignore ratelimit.")
+    
     
     config.load_config(args.config)
     feeds = config.feeds
