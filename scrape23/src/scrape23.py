@@ -14,10 +14,11 @@ from urllib.parse import urlparse
 from datetime import datetime, timezone, timedelta
 import email.utils
 from humanfriendly import parse_size
-
 import croniter
 from time import sleep
-
+import signal
+import sys
+from threading import Event
 
 
 
@@ -40,6 +41,14 @@ class Feed:
         self.next_run: datetime = datetime.fromtimestamp(self.cron.get_next())
         logger.debug(f"Next run for feed {self.name} is at {self.next_run}.")
         self.feedtitle : str = feedtitle
+
+
+## service signal handling
+quit = Event()
+def signal_handler(sig, frame):
+    global quit
+    logger.info("Signal received, exiting.")
+    quit.set()
 
  
 # setup everything so scrape23 will actually work. This will obvs not configure your web server
@@ -456,11 +465,13 @@ def main(argv=None):
     
     ## Default behaviour is to process all feeds from the config file and then follow the croniter schedule.
     logger.info("Running in service mode.")
+    # Register signal handler for SIGTERM in service mode
+    signal.signal(signal.SIGTERM, signal_handler)
     
     wait_cron = croniter.croniter("*/5 * * * *")  # every 5 minutes
     
-    quit = False
-    while not quit:
+    
+    while not quit.is_set():
         now: datetime = datetime.now()
 
         logger.debug(f"Current time: {now}.")
@@ -471,7 +482,7 @@ def main(argv=None):
 
         # sleep until next run
         logger.debug(f"Next run at {next_run}.")
-        sleep((next_run - datetime.now()).total_seconds())
+        quit.wait((next_run - datetime.now()).total_seconds())
 
     return True
 

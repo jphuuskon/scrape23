@@ -24,12 +24,12 @@ feedurl = "https://yourserver/feeds/"
 # The feedname is the friendly name of the feed as it appears in the RSS feed, and the url is the URL 
 # to the YouTube channel or search query.
 
-
 [feeds."Viisasteluklubi"]
 feedtitle = "Ivan Puopolo - Viisasteluklubi"
 url = "https://www.youtube.com/@ivan_puopolo/videos"
 # You can use a match string that is passed to yt-dlp for filtering episodes. See yt-dlp documentation for help.
 match_title = "Viisastelu"
+# schedule is in cron format, parsed by croniter. To help design schedules you can use a tool such as https://crontab.guru/ .
 schedule = "5 12 * * 6"
 
 [feeds."Kuuntelija"]
