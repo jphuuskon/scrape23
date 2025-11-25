@@ -17,7 +17,6 @@ from humanfriendly import parse_size
 import croniter
 from time import sleep
 import signal
-import sys
 from threading import Event
 
 
@@ -337,7 +336,7 @@ def strip_toc(f):
 
 # Process a single feed
 def process_feed(feed: Feed, now: datetime|None, no_download=False):
-    logger.info(f"Processing feed {feed.name}.")
+    logger.debug(f"Processing feed {feed.name}.")
     
     if now is not None:
         if feed.next_run > now:
@@ -347,10 +346,13 @@ def process_feed(feed: Feed, now: datetime|None, no_download=False):
             # update next run
             feed.next_run = datetime.fromtimestamp(feed.cron.get_next())
             logger.debug(f"Next run for feed {feed.name} updated to {feed.next_run}.")
+
     if not check_archive(feed, refresh_thumbnails):
         return False
+
     if not no_download:
         get_episodes(feed)
+
     else:
         logger.info(f"Skipping episode downloads for {feed.name}.")
     
@@ -465,12 +467,13 @@ def main(argv=None):
     
     ## Default behaviour is to process all feeds from the config file and then follow the croniter schedule.
     logger.info("Running in service mode.")
+
     # Register signal handler for SIGTERM in service mode
     signal.signal(signal.SIGTERM, signal_handler)
+    # run every 5 minutes    
+    wait_cron = croniter.croniter("*/5 * * * *")
     
-    wait_cron = croniter.croniter("*/5 * * * *")  # every 5 minutes
-    
-    
+    # service mode main loop       
     while not quit.is_set():
         now: datetime = datetime.now()
 
@@ -485,8 +488,6 @@ def main(argv=None):
         quit.wait((next_run - datetime.now()).total_seconds())
 
     return True
-
-
 
 # Default entrypoint
 if __name__ == "__main__":
