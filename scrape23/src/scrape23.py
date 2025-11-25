@@ -16,6 +16,7 @@ import email.utils
 from humanfriendly import parse_size
 import croniter
 from time import sleep
+import time
 import signal
 from threading import Event
 
@@ -23,12 +24,16 @@ from threading import Event
 
         
 # Logging setup and defaults
-logging.basicConfig(format='%(asctime)s - %(funcName)s() - %(levelname)s - %(message)s',level=logging.INFO)
-logger = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 sf = logging.Formatter('%(asctime)s - %(funcName)s - %(levelname)s - %(message)s')
+sf.converter = time.localtime
 sh.setFormatter(sf)
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+for h in logger.handlers:
+    logger.removeHandler(h)
+logger.addHandler(sh)
+
  
  
 class Feed:
