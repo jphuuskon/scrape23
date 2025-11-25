@@ -41,7 +41,7 @@ class Feed:
         self.url : str = url
         self.match_title : str | None = match_title
         self.cron : croniter.croniter = croniter.croniter(schedule, datetime.now(config.timezone))
-        self.next_run: datetime = datetime.fromtimestamp(self.cron.get_next())
+        self.next_run: datetime = datetime.fromtimestamp(self.cron.get_next(), config.timezone)
         logger.debug(f"Next run for feed {self.name} is at {self.next_run}.")
         self.feedtitle : str = feedtitle
 
@@ -485,7 +485,7 @@ def main(argv=None):
         for feed in feeds:
             process_feed(feed, now, args.no_download)    
         
-        next_run: datetime = datetime.fromtimestamp(wait_cron.get_next())
+        next_run: datetime = datetime.fromtimestamp(wait_cron.get_next(), config.timezone)
 
         # sleep until next run
         logger.debug(f"Next run at {next_run}.")
