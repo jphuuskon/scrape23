@@ -17,6 +17,9 @@ feedurl = "https://yourserver/feeds/"
 # Uncomment this if you want to ratelimit downloads for whatever reason.
 #ratelimit = "500kB"
 
+#set timezone to match local time. Otherwise service mode logs are timestamped at UTC.
+timezone = "Europe/Helsinki"
+
 [feeds]
 
 # Configure the feeds you want to generate here. The key is the a name of the feed that must be a valid name for

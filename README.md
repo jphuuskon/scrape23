@@ -54,15 +54,15 @@ Scrape23 is a utility to convert any YouTube channel into a podcast feed served 
 
 ## Configuration
 
-Check `scrape23.toml.sample` file for configuration examples.
+Configuration options are documented in `scrape23.toml.sample`.
 
 
 ## Calling scrape23 manually
 
 You can execute scrape23 manually by just calling:
-    ```bash
-    scrape23
-    ```
+```bash
+scrape23
+```
 
 ## Command Line Options
 

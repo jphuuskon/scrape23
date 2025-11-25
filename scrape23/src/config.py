@@ -2,6 +2,7 @@ import tomllib
 import logging
 import shutil
 from pathlib import Path
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -10,6 +11,7 @@ feed_directory = ""
 feed_url = ""
 feeds = []
 ratelimit = 0
+timezone = pytz.UTC
 
 def generate_config(path):
     logger.info("Generating scrape23 configuration...")
@@ -23,6 +25,7 @@ def load_config(configfile):
     global feed_url
     global feeds
     global ratelimit
+    global timezone
     logger.info(f"Loading configuration from {configfile}...")
     
     data = []
@@ -37,6 +40,7 @@ def load_config(configfile):
     feed_directory = data['common']['feeddir']
     feed_url = data['common']['feedurl']
     ratelimit = data['common']['ratelimit']
+    timezone = pytz.timezone(data['common'].get('timezone', 'UTC'))
     
     feeds = data['feeds']
     

@@ -19,10 +19,9 @@ from time import sleep
 import time
 import signal
 from threading import Event
+import pytz
 
 
-
-        
 # Logging setup and defaults
 sh = logging.StreamHandler()
 sf = logging.Formatter('%(asctime)s - %(funcName)s - %(levelname)s - %(message)s')
@@ -41,7 +40,7 @@ class Feed:
         self.name : str = name
         self.url : str = url
         self.match_title : str | None = match_title
-        self.cron : croniter.croniter = croniter.croniter(schedule)
+        self.cron : croniter.croniter = croniter.croniter(schedule, datetime.now(config.timezone))
         self.next_run: datetime = datetime.fromtimestamp(self.cron.get_next())
         logger.debug(f"Next run for feed {self.name} is at {self.next_run}.")
         self.feedtitle : str = feedtitle
@@ -480,7 +479,7 @@ def main(argv=None):
     
     # service mode main loop       
     while not quit.is_set():
-        now: datetime = datetime.now()
+        now: datetime = datetime.now(config.timezone)
 
         logger.debug(f"Current time: {now}.")
         for feed in feeds:
@@ -490,7 +489,7 @@ def main(argv=None):
 
         # sleep until next run
         logger.debug(f"Next run at {next_run}.")
-        quit.wait((next_run - datetime.now()).total_seconds())
+        quit.wait((next_run - now).total_seconds())
 
     return True
 
