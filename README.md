@@ -64,4 +64,77 @@ You can execute scrape23 manually by just calling:
     scrape23
     ```
 
-If you don't specify a config file with the `--config` argument it'll try to look for one in `~/scrape23.toml`.
+## Command Line Options
+
+Scrape23 provides several command line options to control its behavior:
+
+### Basic Usage
+```bash
+scrape23 [OPTIONS]
+```
+
+### Configuration
+- `--config CONFIG_FILE`  
+  Specify the configuration file to use. If not provided, scrape23 will look for `~/scrape23.toml`.
+
+### Initialization Options
+- `--initialize`  
+  Check that all necessary filesystem locations exist and are writeable. Use this to set up your environment before first run.
+
+- `--initialize-archives`  
+  Initialize archives without downloading any episodes. This populates the download archive with existing episodes so only future episodes will be downloaded.
+
+### Feed Processing
+- `--feed FEED_NAME`  
+  Process only the specified feed instead of running all configured feeds. Useful for testing or manual processing of individual feeds.
+
+- `--no-download`  
+  Skip downloading new episodes and only process existing files to generate RSS feeds. Useful for regenerating feeds after configuration changes.
+
+### Media Options
+- `--refresh-thumbnails`  
+  Force refresh of feed thumbnails even if they already exist.
+
+- `--ratelimit RATE`  
+  Set download rate limit (e.g., `500K`, `1M`, `2MB`). Supports both bytes (kB, MB) and bits (kb, Mb) per second. Overrides any rate limit specified in the config file.
+
+- `--ignore-ratelimit`  
+  Ignore any rate limit specified in the config file and download at maximum speed.
+
+### Logging and Debug
+- `--log LOG_FILE`  
+  Specify log file location (default: `/var/log/scrape23.log`).
+
+- `--debug`  
+  Enable debug logging for more verbose output.
+
+### Examples
+
+Initialize environment:
+```bash
+scrape23 --initialize --config myfeeds.toml
+```
+
+Set up archives without downloading past episodes:
+```bash
+scrape23 --initialize-archives --config myfeeds.toml
+```
+
+Process a single feed with rate limiting:
+```bash
+scrape23 --feed myfeed --ratelimit 1MB --config myfeeds.toml
+```
+
+Regenerate RSS without downloading:
+```bash
+scrape23 --no-download --refresh-thumbnails --config myfeeds.toml
+```
+
+Run with debug logging:
+```bash
+scrape23 --debug --log /tmp/scrape23-debug.log --config myfeeds.toml
+```
+
+### Service Mode
+
+When run without the `--feed` option, scrape23 operates in service mode, continuously monitoring all configured feeds according to their individual schedules defined in the configuration file.

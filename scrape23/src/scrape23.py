@@ -11,17 +11,36 @@ from mutagen.mp3 import MP3
 import logging
 from lxml import etree
 from urllib.parse import urlparse
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import email.utils
 from humanfriendly import parse_size
 
+import croniter
+from time import sleep
+
+
+
+
+        
 # Logging setup and defaults
-logging.basicConfig(format='%(asctime)s - %(funcName)s - %(levelname)s - %(message)s',level=logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(funcName)s() - %(levelname)s - %(message)s',level=logging.INFO)
 logger = logging.getLogger(__name__)
 sh = logging.StreamHandler()
 sf = logging.Formatter('%(asctime)s - %(funcName)s - %(levelname)s - %(message)s')
 sh.setFormatter(sf)
 logger.setLevel(logging.INFO)
+ 
+ 
+class Feed:
+    def __init__(self, name: str, url: str, feedtitle: str, schedule: str, match_title: str|None = None):
+        self.name : str = name
+        self.url : str = url
+        self.match_title : str | None = match_title
+        self.cron : croniter.croniter = croniter.croniter(schedule)
+        self.next_run: datetime = datetime.fromtimestamp(self.cron.get_next())
+        logger.debug(f"Next run for feed {self.name} is at {self.next_run}.")
+        self.feedtitle : str = feedtitle
+
  
 # setup everything so scrape23 will actually work. This will obvs not configure your web server
 def initialize_environment():
@@ -117,22 +136,21 @@ def get_thumbnail(url, thumbnail_path):
     with yt_dlp.YoutubeDL(ytdl_opts) as ytdl:
         error_code = ytdl.download(urls)
     
-daterange = yt_dlp.utils.DateRange("today-2months", "today")
+
     
 # initialize a feed and download the episode list for the archive.
-def check_archive(feed_name, refresh_thumbnails = False):
-    feeds = config.feeds
-    logger.info(f"Checking archive for {feed_name}.")
-    url =f"{config.feeds[feed_name]['url']}"
+def check_archive(feed: Feed, refresh_thumbnails: bool = False):
+    logger.info(f"Checking archive for {feed.name}.")
+    url =feed.url
 
-    archive = Path(f"{config.archive_path}/{feed_name}.archive")
+    archive = Path(f"{config.archive_path}/{feed.name}.archive")
     
     
-    thumbnailpath = Path(f"{config.feed_directory}/thumbnails/{feed_name}.jpg")
+    thumbnailpath = Path(f"{config.feed_directory}/thumbnails/{feed.name}.jpg")
     logger.debug(f"Thumbnail path: {thumbnailpath}")
     
     # check episode path
-    episodespath = Path(config.feed_directory + '/media/' + feed_name)
+    episodespath = Path(config.feed_directory + '/media/' + feed.name)
     if not Path.exists(episodespath):
         Path.mkdir(episodespath)
     elif not Path.is_dir(episodespath):
@@ -154,31 +172,32 @@ def check_archive(feed_name, refresh_thumbnails = False):
     # use yt_dlp to get a list of past episodes that we don't want to download
     if not Path.exists(archive):
         with yt_dlp.YoutubeDL(ytdl_opts) as ytdl:
-            logger.info(f"Populating archive for {feed_name}.")
+            logger.info(f"Populating archive for {feed.name}.")
             error_code = ytdl.download(url)
     
     return True
 
-def get_episodes(feed_name, ratelimit=None):
-    feeds = config.feeds
+def get_episodes(feed: Feed, ratelimit: str|None=None):
     feed_directory = config.feed_directory
     feed_url = config.feed_url
     archive_path = config.archive_path
     
-    logger.info(f"Getting episodes for {feed_name}")
-    url = feeds[feed_name]['url']
+    logger.info(f"Getting episodes for {feed.name}")
+    url = feed.url
     logger.debug(f"Feed URL: {url}")
     
-    archive = Path(f"{archive_path}/{feed_name}.archive")
+    archive = Path(f"{archive_path}/{feed.name}.archive")
     logger.debug(f"Archive path: {archive}")
         
     # check episode path
-    episodespath = Path(feed_directory + '/media/' + feed_name)
+    episodespath = Path(feed_directory + '/media/' + feed.name)
     if not Path.exists(episodespath):
         Path.mkdir(episodespath)
     elif not Path.is_dir(episodespath):
         logger.error("Episodes path is not a directory.")
         return False
+    
+    daterange = yt_dlp.utils.DateRange("today-2months", "today")
     
     # set up ytdl options
     ytdl_opts = {
@@ -205,8 +224,8 @@ def get_episodes(feed_name, ratelimit=None):
                             'when': 'playlist'}]
     }
     
-    if 'match_title' in feeds[feed_name]:
-        ytdl_opts['matchtitle'] = feeds[feed_name]['match_title']
+    if feed.match_title:
+        ytdl_opts['matchtitle'] = feed.match_title
     
     # use yt_dlp to get a list of past episodes
     with yt_dlp.YoutubeDL(ytdl_opts) as ytdl:
@@ -214,14 +233,13 @@ def get_episodes(feed_name, ratelimit=None):
     return True
 
 # postprocess RSS feed to update publication dates from episode metadata.
-def postprocess_rss(feedname):
+def postprocess_rss(feed: Feed):
     
-    logger.info(f"Postprocessing RSS for {feedname}.")
+    logger.info(f"Postprocessing RSS for {feed.name}.")
     
-    feeds = config.feeds
     feed_directory = config.feed_directory
-    filesdirectory = feed_directory + f'/media/{feedname}'
-    outputfile = f'{feedname}.rss'
+    filesdirectory = feed_directory + f'/media/{feed.name}'
+    outputfile = f'{feed.name}.rss'
     rsspath = Path(f"{feed_directory}/{outputfile}")
     logger.debug(f"RSS path: {rsspath}")
     
@@ -256,23 +274,21 @@ def postprocess_rss(feedname):
     tree.write(rsspath, encoding='utf-8', xml_declaration=True) 
 
 #generate RSS
-def generate_rss(feedname):
-    feeds = config.feeds
+def generate_rss(feed: Feed):
     feed_directory = config.feed_directory
     feed_url = config.feed_url
     
-    logger.info(f"Generating RSS feed for {feedname}.")
-    feedtitle = feeds[feedname]["feedname"]
-    logger.debug(f"Feed title: {feedtitle}")
-    filesdirectory = f'media/{feedname}'
+    logger.info(f"Generating RSS feed for {feed.name}.")
+    logger.debug(f"Feed title: {feed.feedtitle}")
+    filesdirectory = f'media/{feed.name}'
     logger.debug(f"Files directory: {filesdirectory}")
-    outputfile = f'{feedname}.rss'
+    outputfile = f'{feed.name}.rss'
     logger.debug(f"Output file: {outputfile}")
-    thumbnail = f'thumbnails/{feedname}.jpg'
+    thumbnail = f'thumbnails/{feed.name}.jpg'
     logger.debug(f"Thumbnail path: {thumbnail}")
     
     # arguments for genRSS    
-    argv = ['-t', feedtitle, '-d', filesdirectory, '-o', outputfile, '-H', feed_url, '-M', '-C', '-e', 'mp3', '-i', thumbnail]
+    argv = ['-t', feed.feedtitle, '-d', filesdirectory, '-o', outputfile, '-H', feed_url, '-M', '-C', '-e', 'mp3', '-i', thumbnail]
 
     # push working directory. GenRSS operates on the working directory so we need to change directories.
     cwd = os.getcwd()
@@ -289,15 +305,11 @@ def generate_rss(feedname):
     return True
 
 # clean up metadata from the media files for a given feed. This is mostly done for the CTOC:toc stripping
-def preprocess_metadata(feed):
-    logger.info(f"Metadata cleanup for feed {feed}.")
-    feeds = config.feeds
-    if not feed in feeds:
-        logger.error(f"Feed {feed} not configured.")
-        return False
-    
+def preprocess_metadata(feed: Feed):
+    logger.info(f"Metadata cleanup for feed {feed.name}.")    
+
     # strip CTOC:toc from all files
-    filedir = Path(config.feed_directory + '/media/' + feed)
+    filedir = Path(config.feed_directory + '/media/' + feed.name)
     for f in filedir.iterdir():    
         if f.is_file() and f.suffix == '.mp3':
             logger.debug(f"Checking file {f}.")
@@ -315,14 +327,23 @@ def strip_toc(f):
         mtgfile.save()
 
 # Process a single feed
-def process_feed(feed, no_download=False):
-    logger.info(f"Processing feed {feed}.")
+def process_feed(feed: Feed, now: datetime|None, no_download=False):
+    logger.info(f"Processing feed {feed.name}.")
+    
+    if now is not None:
+        if feed.next_run > now:
+            logger.debug(f"Skipping {feed.name}, next run at {feed.next_run}.")
+            return True
+        else:
+            # update next run
+            feed.next_run = datetime.fromtimestamp(feed.cron.get_next())
+            logger.debug(f"Next run for feed {feed.name} updated to {feed.next_run}.")
     if not check_archive(feed, refresh_thumbnails):
         return False
     if not no_download:
         get_episodes(feed)
     else:
-        logger.info(f"Skipping episode downloads for {feed}.")
+        logger.info(f"Skipping episode downloads for {feed.name}.")
     
     # filter MP3's            
     preprocess_metadata(feed)
@@ -375,7 +396,16 @@ def main(argv=None):
     
     # get configuration
     config.load_config(args.config)
-    feeds = config.feeds
+    
+    feeds: list[Feed] = []
+    
+    for feedname in config.feeds:
+        logger.info(f"Loading feed: {feedname}")
+        feeds.append(Feed(feedname, 
+                          config.feeds[feedname]['url'],
+                          config.feeds[feedname]['feedtitle'],
+                          config.feeds[feedname]['schedule'],
+                          config.feeds[feedname].get('match_title', None)))
     
     #set the rate limit
     ratelimit = None 
@@ -417,17 +447,32 @@ def main(argv=None):
     # check if we want to manually process a particular feed
     if args.feed:
         logger.info(f"Processing feed {args.feed}")
-        if not args.feed in feeds:
-            logger.error(f"Error: feed {args.feed} not configured.")
+        feed = next((f for f in feeds if f.name == args.feed), None)
+        if feed is None:
+            logger.error(f"Feed {args.feed} not configured.")
             return False
-        feed = args.feed
-        process_feed(feed, args.no_download)
+        process_feed(feed, None, args.no_download)
         return True
     
-    ## Default behaviour is to process all feeds from the config file.   
-    logger.info("Processing all feeds.")
-    for feed in feeds:
-        process_feed(feed, args.no_download)
+    ## Default behaviour is to process all feeds from the config file and then follow the croniter schedule.
+    logger.info("Running in service mode.")
+    
+    wait_cron = croniter.croniter("*/5 * * * *")  # every 5 minutes
+    
+    quit = False
+    while not quit:
+        now: datetime = datetime.now()
+
+        logger.debug(f"Current time: {now}.")
+        for feed in feeds:
+            process_feed(feed, now, args.no_download)    
+        
+        next_run: datetime = datetime.fromtimestamp(wait_cron.get_next())
+
+        # sleep until next run
+        logger.debug(f"Next run at {next_run}.")
+        sleep((next_run - datetime.now()).total_seconds())
+
     return True
 
 

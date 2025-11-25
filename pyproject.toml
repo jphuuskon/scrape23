@@ -14,6 +14,7 @@ yt-dlp = "*"
 generss = "*"
 lxml = "*"
 humanfriendly = "^10.0"
+croniter = "^6.0.0"
 
 
 [tool.poetry.scripts]
